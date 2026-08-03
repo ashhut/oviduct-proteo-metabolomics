@@ -24,11 +24,20 @@ library(purrr)
 library(ggplot2)
 library(SummarizedExperiment)
 library(tibble)
-setwd("/data/gpfs/projects/punim0494/amhutchinson/oviduct-proteo-metabolomics/")
 
-inputDir = "output/maxquant/combined/txt/"
-outputDir = "output/dep/"
-plotDir = "output/plots/"
+# Set up working directory - change as necessary
+
+# setwd("/data/gpfs/projects/punim0494/amhutchinson/oviduct-proteo-metabolomics/")
+setwd("/data/gpfs/projects/punim2381/amhutchinson/oviduct-proteo-metabolomics/")
+
+# inputDir = "output/maxquant/combined/txt/"
+# outputDir = "output/dep/"
+# plotDir = "output/plots/"
+
+inputDir = "analysis/maxquant/combined/txt/"
+outputDir = "analysis/dep/"
+plotDir = "analysis/plots/"
+
 ```
 
 
@@ -65,7 +74,7 @@ data$Protein.IDs_1[3] <- "|CCM|CCM"
 data$Protein.IDs_2 <- unlist(lapply(strsplit(as.character(data$Protein.IDs_1), "[|]"), '[[', 2))
 data$Protein.IDs_3 <- unlist(lapply(strsplit(as.character(data$Protein.IDs_1), "[|]"), '[[', 3))
 
-# Are there any duplicated gene names?
+# Check fo rduplicated names:
 
 data$Protein.IDs_3 %>% duplicated() %>% any()
 ## [1] TRUE
@@ -75,7 +84,7 @@ data$Protein.IDs_3 %>% duplicated() %>% any()
 data %>% group_by(Protein.IDs_3) %>% summarize(frequency = n()) %>%
   arrange(desc(frequency)) %>% filter(frequency > 1)
 
-##Make unique names using the annotation in the "Gene.names" column as primary names and the annotation in "Protein.IDs" as name for those that do not have an gene name.
+## Make unique names using the annotation in the "Gene.names" column as primary names and the annotation in "Protein.IDs" as name for those that do not have an gene name.
 
 data_unique <- make_unique(data, "Protein.IDs_3", "Protein.IDs_3", delim = ";")
 
@@ -90,20 +99,20 @@ data_se <- make_se(data_unique, LFQ_columns, experimental_design)
 LFQ_columns <- grep("LFQ.", colnames(data_unique))
 data_se_parsed <- make_se_parse(data_unique, LFQ_columns)
 
-##Data is now log2 transformed
+## Data is now log2 transformed
 
-## Let's have a look at the SummarizedExperiment object
+## Visualising the SummarizedExperiment object
 data_se
 plot_frequency(data_se)
 ```
 
 ```{r}
-#Filter on missing values
+# Filter on missing values
 ## Filter for proteins that are identified in all replicates of at least one condition
 
 data_filt <- filter_missval(data_se, thr = 0)
 
-### Here you can check how many background proteins and how many differentially expressed proteins are produced using each method
+### Checking how many background proteins and how many differentially expressed proteins are produced using each method
 
 #### Then perform differential expression analysis
 data_diff_filt <- test_diff(data_filt, type = "control", control = "NOE")
@@ -126,7 +135,7 @@ write.table(data_results_filt, file=paste0(outputDir,"data_differential_results_
 ##Alternatively filter for proteins that are identified in 2 out of 3 replicates of at least one condition
 data_filt2 <- filter_missval(data_se, thr = 1)
 
-### Here you can check how many background proteins and how many differentially expressed proteins are produced using each method
+### Checking how many background proteins and how many differentially expressed proteins are produced using each method
 
 #### Then perform differential expression analysis
 data_diff_filt2 <- test_diff(data_filt2, type = "control", control = "NOE")
@@ -148,7 +157,7 @@ write.table(data_results_filt2, file=paste0(outputDir,"data_differential_results
 ## Or filter for proteins that are quantified in at least 2/3 of the samples.
 frac_filtered <- filter_proteins(data_se, "fraction", min = 0.66)
 
-### Here you can check how many background proteins and how many differentially expressed proteins are produced using each method
+### Checking how many background proteins and how many differentially expressed proteins are produced using each method
 
 #### Then perform differential expression analysis
 frac_filtered <- test_diff(frac_filtered, type = "control", control = "NOE")
@@ -170,7 +179,7 @@ write.table(results_frac_filtered, file=paste0(outputDir,"differential_results_f
 # Filter for proteins that have no missing values
 complete_cases <- filter_proteins(data_se, "complete")
 
-### Here you can check how many background proteins and how many differentially expressed proteins are produced using each method
+### Checking how many background proteins and how many differentially expressed proteins are produced using each method
 
 #### Then perform differential expression analysis
 diff_complete_cases <- test_diff(complete_cases, type = "control", control = "NOE")
@@ -192,7 +201,7 @@ write.table(results_complete_cases, file=paste0(outputDir,"differential_results_
 # No filtering
 no_filter <- data_se
 
-### Here you can check how many background proteins and how many differentially expressed proteins are produced using each method
+### Checking how many background proteins and how many differentially expressed proteins are produced using each method
 
 #### Then perform differential expression analysis
 diff_no_filter <- test_diff(no_filter, type = "control", control = "NOE")
@@ -369,12 +378,12 @@ data_imp_mle <- impute(data_norm, fun = "MLE")
 ```
 
 ```{r}
-#Focus on data-filt2
+# data-filt2
 
-#no imputation
+# no imputation
 no_imputation_data_filt2 <- data_norm_filt2
 
-#Minprob
+# Minprob
 data_imp_filt2 <- impute(data_norm_filt2, fun = "MinProb", q = 0.01)
 
 # Perform a mixed imputation
@@ -390,7 +399,7 @@ proteins_MNAR_filt2 <- get_df_long(data_norm_filt2) %>%
 ## Get a logical vector
 MNAR_filt2 <- names(data_norm_filt2) %in% proteins_MNAR_filt2
 
-##perform the imputation
+## perform the imputation
 mixed_imputation_filt2 <- impute(
   data_norm_filt2, 
   fun = "mixed",
@@ -409,7 +418,7 @@ dev.off()
 ```
 
 ```{r}
-#Differential enrichment analysis based on linear models and empirical Bayes statistics
+# Differential enrichment analysis based on linear models and empirical Bayes statistics
 
 # Test every sample versus control
 
@@ -426,20 +435,6 @@ data_diff_all_contrasts_no_imputation_filt2 <- test_diff(no_imputation_data_filt
 data_diff_all_contrasts_data_imp_filt2 <- test_diff(data_imp_filt2, type = "all")
 
 data_diff_all_contrasts_mixed_imputation_filt2 <- test_diff(mixed_imputation_filt2, type = "all")
-```
-
-```{r}
-# Test manually defined comparisons
-## This is perhaps where you could try and include the comparisons with the blood and tissue
-## To see where they fit with the samples
-## Not sure how to "control" or "minus" these from the analysis but maybe you can see what
-## overlaps with the fluid samples for both control and oestrus and then look at differential proteins between
-## the fluid and tissues. Because I guess you would expect the proteins that are in both to be higher in the 
-## tissue? 
-## And then can look at what is not in both groups as well?
-
-data_diff_manual <- test_diff(data_imp, type = "manual", 
-                              test = c("Blood", "OE")) ## put in the actual IDs you want to compare
 ```
 
 ```{r}
@@ -534,12 +529,11 @@ pdf(paste0(plotDir,"volcano_plot_filt2_allsamples_mixed.pdf"))
 plot_volcano(dep_filt2_mixed, contrast = "OE_vs_NOE", label_size = 2, add_names = TRUE)
 dev.off()
 
-##note, Warning message: ggrepel: 43 unlabeled data points (too many overlaps). Consider increasing max.overlaps 
+## note, Warning message: ggrepel: 43 unlabeled data points (too many overlaps). Consider increasing max.overlaps 
 ```
 
 ```{r}
-# Plot a barplot for whatever proteins of interest you want to look at
-## If you have any that you want to specifically see if they're differentially expressed. 
+# Plot a barplot for proteins of interest
 pdf("test.pdf")
 plot_single(dep, proteins = c("CCM", "AGPS"))
 dev.off()
